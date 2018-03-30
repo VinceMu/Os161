@@ -1,0 +1,6 @@
+
+--This line, and those below, will be ignored--
+
+M    kern/conf/conf.kern
+A    kern/main/hello.c
+M    kern/main/main.c
