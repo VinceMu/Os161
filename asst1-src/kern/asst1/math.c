@@ -40,7 +40,7 @@ struct semaphore *finished;
  * ADD YOUR OWN VARIABLES HERE AS NEEDED
  * **********************************************************************
  */
-
+static struct lock *lock_c;
 
 
 /*
@@ -78,12 +78,14 @@ static void adder(void * unusedpointer, unsigned long addernumber)
                 /* loop doing increments until we achieve the overall number
                    of increments */
 
+                /* acquire lock before entering counter */
+                lock_acquire(lock_c);
                 a = counter;
                 if (a < NADDS) {
                         counter = counter + 1;
                         b = counter;
 
-                        /* count the number of increments we perform  for statistics */
+                        /* count the number of increments we perform for statistics */
                         adder_counters[addernumber]++;
 
                         /* check we are getting sane results */
@@ -94,6 +96,8 @@ static void adder(void * unusedpointer, unsigned long addernumber)
                 } else {
                         flag = 0;
                 }
+                /* release lock after finishing operating on counter */
+                lock_release(lock_c);
         }
 
         /* signal the main thread we have finished and then exit */
@@ -138,6 +142,10 @@ int maths (int data1, char **data2)
          * ********************************************************************
          */
 
+        /* create a lock here to protect critical area */
+        
+        lock_c = lock_create("lock_c");
+        KASSERT(lock_c != 0);
 
         /*
          * Start NADDERS adder() threads.
@@ -146,7 +154,6 @@ int maths (int data1, char **data2)
         kprintf("Starting %d adder threads\n", NADDERS);
 
         for (index = 0; index < NADDERS; index++) {
-
                 error = thread_fork("adder thread", NULL, &adder, NULL, index);
 
                 /*
@@ -186,6 +193,9 @@ int maths (int data1, char **data2)
 
         /* clean up the semaphore we allocated earlier */
         sem_destroy(finished);
+        /* clean up the lock allocateed at the beginning */
+        lock_destroy(lock_c);
         return 0;
 }
+
 
