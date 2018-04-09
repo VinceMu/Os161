@@ -1,21 +1,21 @@
 	/* This file will contain your solution. Modify it as you wish. */
 	#include <types.h>
 	#include "producerconsumer_driver.h"
-	#include <synch.h>  // for P(), V(), sem_* 
-
+	#include <synch.h>  
+	
 
 	/* Declare any variables you need here to keep track of and
 	   synchronise your bounded. A sample declaration of a buffer is shown
 	   below. You can change this if you choose another implementation. */
+	   
+	static struct pc_data myData[BUFFER_SIZE];
 
-	static struct {
-		struct pc_data elements[BUFFER_SIZE];
-		int first; /* buf[first%BUFF_SIZE] is the first empty slot  */
-		int last; //buf[last%BUFF_SIZE] is the first full slot  
-	} buffer;
 
 	//typedef int semaphore;
-	static struct semaphore *mutex, *empty, *full;
+	static struct semaphore *useQueue, *emptyCount, *fullCount;
+	
+	int firstGlobalIndex;
+	int lastGlobalIndex; 
 
 	/* consumer_receive() is called by a consumer to request more data. It
 	   should block on a sync primitive if no data is available in your
@@ -25,14 +25,15 @@
 	{
 		struct pc_data thedata;
 			 
-		P(full);
-		P(mutex);
+		P(fullCount);
+		P(useQueue);
 			
-		thedata = buffer.elements[buffer.first];
-		buffer.first = (buffer.first + 1)%BUFFER_SIZE;
-			
-		V(mutex);
-		V(empty);
+
+		thedata = myData[firstGlobalIndex];
+		firstGlobalIndex = (firstGlobalIndex + 1)%BUFFER_SIZE;	
+		
+		V(useQueue);
+		V(emptyCount);
 		return thedata;		
 	}
 
@@ -42,14 +43,16 @@
 
 	void producer_send(struct pc_data item)
 	{
-		P(empty);
-		P(mutex);
+		P(emptyCount);
+		P(useQueue);
 		
-		buffer.elements[buffer.last] = item;
-		buffer.last = (buffer.last + 1)%BUFFER_SIZE;
 		
-		V(mutex);
-		V(full);
+		myData[lastGlobalIndex] = item;
+		lastGlobalIndex = (lastGlobalIndex + 1)%BUFFER_SIZE;
+		
+		
+		V(useQueue);
+		V(fullCount);
 	}
 
 
@@ -60,18 +63,18 @@
 
 	void producerconsumer_startup(void)
 	{
-		
-		mutex = sem_create("mutex", 1);
-		empty = sem_create("empty", BUFFER_SIZE);
-		full = sem_create("full", 0);
-		
+		fullCount = sem_create("fullCount", 0);
+		useQueue = sem_create("useQueue", 1);
+		emptyCount = sem_create("emptyCount", BUFFER_SIZE);
+
 	}
 
 	/* Perform any clean-up you need here */
 	void producerconsumer_shutdown(void)
 	{
-		sem_destroy(mutex);
-		sem_destroy(empty);
-		sem_destroy(full);
+		sem_destroy(useQueue);
+		sem_destroy(fullCount);
+		sem_destroy(emptyCount);
+
 	}
 

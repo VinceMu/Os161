@@ -18,6 +18,10 @@
 /* Declare any globals you need here (e.g. locks, etc...) */
 
 
+static struct semaphore *orderQueue,*emptyQueue, *fullQueue;
+
+
+
 /*
  * **********************************************************************
  * FUNCTIONS EXECUTED BY CUSTOMER THREADS
